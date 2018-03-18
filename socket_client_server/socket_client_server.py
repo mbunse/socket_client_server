@@ -145,7 +145,7 @@ class Sock_Server(Sock_Base, threading.Thread):
         self.sock.listen(1)
         while not self.__quit.is_set():
             # Wait for incoming connections
-            logging.info("Server waits for connections")
+            logging.debug("Server waits for connections")
             try:
                 connection, client_address = self.sock.accept()
             except socket.timeout:
