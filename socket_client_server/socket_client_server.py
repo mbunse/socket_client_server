@@ -8,6 +8,13 @@ import struct
 import json
 import os
 
+# compatibility with 2.7 and 3.6
+import future
+import builtins
+import past
+import six
+from contextlib import closing
+
 class Sock_Base:
     """
     Bass class for client and server
@@ -26,8 +33,8 @@ class Sock_Base:
         # serialize as JSON
         msg = json.dumps(data)
         # Prefix each message with a 4-byte length (network byte order)
-        msg = struct.pack('>I', len(msg)) + msg
-        connection.sendall(msg)
+        msg = struct.pack('>I', len(msg)).decode() + msg
+        connection.sendall(msg.encode())
         return
 
     def recv_msg(self, connection):
@@ -60,10 +67,20 @@ class Sock_Base:
             data += packet
         # deserialize JSON
         if decode_json:
-            data = json.loads(data)
+            data = json.loads(data.decode())
         return data
 
 class Sock_Client(Sock_Base):
+    def sending(self, sock, data):
+        sock.connect(self.server_address)
+        # set timeout for accept to 2 seconds
+        sock.settimeout(2)
+        logging.debug("Sending...")
+        self.send_msg(sock, data)
+        logging.debug("Message send")
+        answer = self.recv_msg(sock)
+        logging.debug("Answer received")
+        return answer
     """
     Class for clients
     """
@@ -75,18 +92,21 @@ class Sock_Client(Sock_Base):
         ----------
         data: object that can be serialized to JSON
         """
+        answer = None
         try:
             logging.info("Client conntecting to {server}".format(server=self.server_address))
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.connect(self.server_address)
-        except socket.error, msg:
-            logging.error("Client cannot conntect to {server}: {msg}".format(server=self.server_address, msg=msg))
+            if six.PY2:
+                sock = socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM)
+                answer = self.sending(sock, data)
+                sock.close()
+            else:
+                with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_STREAM) as sock:
+                    answer = self.sending(sock, data)
+
+        except socket.error as e:
+            logging.error("Client cannot conntect to {server}: {msg}".format(server=self.server_address, msg=e.strerror))
             return None
-        # set timeout for accept to 2 seconds
-        sock.settimeout(2)
-        self.send_msg(sock, data)
-        answer = self.recv_msg(sock)
-        sock.close()
+
         return answer
 
 
@@ -129,6 +149,27 @@ class Sock_Server(Sock_Base, threading.Thread):
         self.join()
         return
 
+    def listen(self, sock):
+        sock.bind(self.server_address)
+        # set timeout for accept to 2 seconds
+        sock.settimeout(2)
+        # Listen for incoming connections
+        sock.listen(1)
+        while not self.__quit.is_set():
+            # Wait for incoming connections
+            logging.debug("Server waits for connections")
+            try:
+                connection, client_address = sock.accept()
+            except socket.timeout:
+                continue
+            logging.info("Server received connection from {addr}".format(addr=client_address))
+            data = self.recv_msg(connection)
+            logging.info("Server received data {data}".format(data=data))
+            answer = self.request_handler(data)
+            if answer is not None:
+                self.send_msg(connection, answer)
+            connection.close()
+
     def run(self):
         """
         Loop for server. Executed via `Sock_Server.start()`. 
@@ -137,26 +178,13 @@ class Sock_Server(Sock_Base, threading.Thread):
         logging.info("Server starts socket on {addr}".format(addr=self.server_address))
 
         # Create a UDS socket
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.bind(self.server_address)
-        # set timeout for accept to 2 seconds
-        self.sock.settimeout(2)
-        # Listen for incoming connections
-        self.sock.listen(1)
-        while not self.__quit.is_set():
-            # Wait for incoming connections
-            logging.debug("Server waits for connections")
-            try:
-                connection, client_address = self.sock.accept()
-            except socket.timeout:
-                continue
-            logging.info("Server received connection from {addr}".format(addr=client_address))
-            data = self.recv_msg(connection)
-            answer = self.request_handler(data)
-            if answer is not None:
-                self.send_msg(connection, answer)
-            connection.close()
-        self.sock.close()
+        if six.PY2:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.listen(sock)
+            sock.close()
+        else:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                self.listen(sock)
         try:
             os.unlink(self.server_address)
         except OSError:

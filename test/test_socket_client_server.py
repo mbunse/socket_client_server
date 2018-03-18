@@ -2,6 +2,7 @@
 import unittest
 from socket_client_server.socket_client_server import Sock_Server, Sock_Client
 import time
+import logging
 
 class TestSockClientServer(unittest.TestCase):
     def request_handler(self, data):
@@ -36,4 +37,5 @@ class TestSockClientServerNoAnswer(unittest.TestCase):
         self.server.quit()
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(name)s:%(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
     unittest.main()
