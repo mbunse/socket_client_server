@@ -19,7 +19,7 @@ setup(name='socket_client_server',
       author='Moritz Bunse',
       author_email='mbunse@hotmail.com',
       license='MIT',
-      packages=find_packages(),
+      packages=find_packages(exclude=['test']),
       install_requires=[],
       python_requires='2.7.*'
       )

@@ -1,5 +1,6 @@
-#!/usr/bin/python
-
+"""
+Module for UNIX daemon clint and server
+"""
 import logging
 import threading
 import socket
@@ -162,22 +163,3 @@ class Sock_Server(Sock_Base, threading.Thread):
             if os.path.exists(self.server_address):
                 raise
         return
-        
-if __name__ == "__main__":
-
-    import time
-    logging.basicConfig(level=logging.DEBUG)
-
-    def request_handler(data):
-        return None
-
-    logging.info("starting server")
-    server = Sock_Server("test_socket", request_handler)
-    logging.info("listening")
-    server.start()
-    time.sleep(1)
-    client = Sock_Client("test_socket")
-    print client.send({"test": 0, "msg": "Hallo Welt!"})
-    server.quit()
-
-
