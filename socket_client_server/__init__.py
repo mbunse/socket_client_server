@@ -1,1 +1,1 @@
-#!/bin/python
+from socket_client_server import *
