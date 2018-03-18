@@ -13,6 +13,7 @@ import future
 import builtins
 import past
 import six
+import stat
 from contextlib import closing
 
 class Sock_Base:
@@ -151,6 +152,11 @@ class Sock_Server(Sock_Base, threading.Thread):
 
     def listen(self, sock):
         sock.bind(self.server_address)
+
+        # Add group write permission
+        st = os.stat(self.server_address)
+        os.chmod(self.server_address, st.st_mode | stat.S_IWGRP)
+
         # set timeout for accept to 2 seconds
         sock.settimeout(2)
         # Listen for incoming connections
