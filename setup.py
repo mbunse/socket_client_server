@@ -21,5 +21,5 @@ setup(name='socket_client_server',
       license='MIT',
       packages=find_packages(exclude=['test']),
       install_requires=['future', 'six'],
-      python_requires='>=2.7, >=3.5'
+      python_requires='>=2.7'
       )
