@@ -119,7 +119,7 @@ class Sock_Server(Sock_Base, threading.Thread):
     Started with `Sock_Server.start()`, stop with
     `Sock_Server.quit()`.
     """
-    def __init__(self, server_address, request_handler):
+    def __init__(self, server_address, request_handler, add_stat=stat.S_IWGRP):
         """
         Parameters
         ==========
@@ -127,6 +127,8 @@ class Sock_Server(Sock_Base, threading.Thread):
 
         request_handler: function with one string parameter for
             incoming message returning return message or None
+
+        add_stat (optional): permissions to add to current permissions of socket
         """
         # Make sure the socket does not already exist
         threading.Thread.__init__(self)
@@ -140,6 +142,7 @@ class Sock_Server(Sock_Base, threading.Thread):
         Sock_Base.__init__(self, server_address)
         self.request_handler = request_handler
         self.__quit = threading.Event()
+        self.add_stat = add_stat
     def quit(self):
         """
         Quit socket server
@@ -155,7 +158,7 @@ class Sock_Server(Sock_Base, threading.Thread):
 
         # Add group write permission
         st = os.stat(self.server_address)
-        os.chmod(self.server_address, st.st_mode | stat.S_IWGRP)
+        os.chmod(self.server_address, st.st_mode | self.add_stat)
 
         # set timeout for accept to 2 seconds
         sock.settimeout(2)
