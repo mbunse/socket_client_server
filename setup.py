@@ -12,7 +12,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='socket_client_server',
-      version='0.5.dev1',
+      version='0.5.dev2',
       description='UNIX domain socket client and server classes',
       keywords='server client unix socket daemon',
       url='https://github.com/mbunse/socket_client_server',
